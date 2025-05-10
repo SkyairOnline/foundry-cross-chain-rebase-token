@@ -17,7 +17,7 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
 
     uint256 private constant PRECISION_FACTOR = 1e18;
     bytes32 private constant MINT_AND_BURN_ROLE = keccak256("MINT_AND_BURN_ROLE");
-    uint256 private s_interestRate = 5e10;
+    uint256 private s_interestRate = (5 * PRECISION_FACTOR) / 1e8; // 0.00000005 interest rate
     mapping(address => uint256) private s_userInterestRate;
     mapping(address => uint256) private s_userLastUpdatedTimestamp;
 
@@ -34,9 +34,9 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _newInterestRate The new interest rate to be set
      * @dev The interest rate can only be decreased
      */
-    function setInterestRate(uint256 _newInterestRate) external {
+    function setInterestRate(uint256 _newInterestRate) external onlyOwner {
         // Set the interest rate in the smart contract
-        if(_newInterestRate < s_interestRate) {
+        if(_newInterestRate >= s_interestRate) {
             revert RebaseToken__InterestRateCanOnlyDecrease(s_interestRate, _newInterestRate);
         }
         s_interestRate = _newInterestRate;
@@ -112,10 +112,10 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
         return super.transferFrom(_sender, _recipient, _amount);
     }
 
-    /*
+    /** 
      * @notice Calculate the interest that has been accrued since the last update
      * @param _user The user to calculate the interest accumulated for
-     * @return The interest that has been accumulated since the last update
+     * @return linearInterest The interest that has been accumulated since the last update
      */
     function _calculateUserAccumulatedInterestSinceLastUpdate(address _user) internal view returns (uint256 linearInterest) {
         // we need to calculate the interest that has been accrued since the last update
@@ -153,9 +153,6 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _amount The amount of tokens to burn
      */
     function burn(address _from, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
-        if(_amount == type(uint256).max) {
-            _amount = balanceOf(_from);
-        }
         _mintAccuredInterest(_from);
         _burn(_from, _amount);
     }
