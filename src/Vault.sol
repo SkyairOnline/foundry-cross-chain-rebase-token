@@ -6,7 +6,7 @@ import {IRebaseToken} from "./interfaces/IRebaseToken.sol";
 contract Vault {
     // we need to pass the token address to the constructor
     // create a deposit function that mints tokens to the user equals to the emount of ETH
-    // create a redeem function that burns tokens from the user and the user ETH 
+    // create a redeem function that burns tokens from the user and the user ETH
     // create a way to add rewards to the vault
     IRebaseToken private immutable i_rebaseToken;
 
@@ -26,7 +26,8 @@ contract Vault {
      */
     function deposit() external payable {
         // we need to use the amiunt of ETH the user has sent to mint tokens to the user
-        i_rebaseToken.mint(msg.sender, msg.value);
+        uint256 interestRate = i_rebaseToken.getInterestRate();
+        i_rebaseToken.mint(msg.sender, msg.value, interestRate);
         emit Deposit(msg.sender, msg.value);
     }
 
@@ -35,12 +36,12 @@ contract Vault {
      * @param _amount The amount of RebaseTokens to redeem
      */
     function redeem(uint256 _amount) external {
-        if(_amount == type(uint96).max) {
+        if (_amount == type(uint96).max) {
             _amount = i_rebaseToken.balanceOf(msg.sender);
         }
         // we need to burn the tokens from the user and send them ETH
         i_rebaseToken.burn(msg.sender, _amount);
-        (bool success,) =payable(msg.sender).call{value: _amount}("");
+        (bool success, ) = payable(msg.sender).call{value: _amount}("");
         if (!success) {
             revert Vault__RedeemFailed();
         }
